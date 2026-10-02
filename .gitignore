@@ -1,0 +1,16 @@
+# PlatformIO build output
+.pio/
+.vscode/
+
+# Generated font (750KB) - regenerate with tools/gen_font.py
+include/cn_font.h
+
+# Dev-only helper scripts, not part of the firmware
+write_main.py
+patch_image.py
+
+# OS / editor
+Thumbs.db
+desktop.ini
+*.swp
+*~
