@@ -172,6 +172,10 @@ static bool jpgOutput(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t *bm
   return true;
 }
 
+// ---------------- video engine ----------------
+// Included here so gfx / server / TJpgDec / imgOffX are already declared.
+#include "video.h"
+
 // ---------------- HTML ----------------
 static const char INDEX_HTML[] PROGMEM = R"HTMLPAGE(
 <!DOCTYPE html>
@@ -202,6 +206,18 @@ static const char INDEX_HTML[] PROGMEM = R"HTMLPAGE(
 </head>
 <body>
 <h1>ESP32 TFT Control</h1>
+
+<div class="card">
+  <label>Video (.mjpeg built by tools/pack_mjpeg.py)</label>
+  <input type="file" id="vid" accept=".mjpeg,.mjpg,.bin">
+  <div class="row">
+    <button onclick="uploadVideo()">Upload &amp; Play</button>
+    <button class="sec" onclick="hit('/vid/pause')">Pause</button>
+    <button class="sec" onclick="hit('/vid/play')">Resume</button>
+    <button class="sec" onclick="hit('/vid/stop')">Stop</button>
+  </div>
+  <div id="vstatus" style="font-size:13px;color:#9a9a9e;margin-top:8px"></div>
+</div>
 
 <div class="card">
   <label>Text (Chinese and English)</label>
@@ -327,6 +343,24 @@ async function uploadImage() {
     st.textContent = (r.ok ? "done in " : "FAILED: " + txt + " ") + (Date.now() - t0) + " ms";
   } catch (e) {
     st.textContent = "error: " + e;
+  }
+}
+
+async function uploadVideo() {
+  const el = document.getElementById("vid");
+  const f = el.files[0];
+  const vs = document.getElementById("vstatus");
+  if (!f) { vs.textContent = "pick a .mjpeg file first"; return; }
+  const fd = new FormData();
+  fd.append("vid", f, "video.mjpeg");
+  vs.textContent = "uploading " + Math.round(f.size / 1024) + " KB...";
+  const t0 = Date.now();
+  try {
+    const r = await fetch("/video", { method: "POST", body: fd });
+    const txt = await r.text();
+    vs.textContent = (r.ok ? "playing" : "FAILED: " + txt) + " (" + (Date.now() - t0) + " ms)";
+  } catch (e) {
+    vs.textContent = "error: " + e;
   }
 }
 </script>
@@ -515,6 +549,10 @@ void setup() {
   server.on("/size",    HTTP_GET,  handleSize);
   server.on("/color",   HTTP_GET,  handleColor);
   server.on("/image",   HTTP_POST, handleImageDone, handleImageUpload);
+  server.on("/video",     HTTP_POST, handleVideoDone,    handleVideoUpload);
+  server.on("/vid/play",  HTTP_GET,  handleVidPlay);
+  server.on("/vid/pause", HTTP_GET,  handleVidPause);
+  server.on("/vid/stop",  HTTP_GET,  handleVidStop);
   server.onNotFound(handleNotFound);
 
   server.begin();
@@ -524,4 +562,5 @@ void setup() {
 
 void loop() {
   server.handleClient();
+  vidTick();
 }

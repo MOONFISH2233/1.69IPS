@@ -134,6 +134,61 @@ cd D:\学习\TFT169_ESP32S3
 | 清屏 / 换行 | |
 | **图片上传** | 网页端自动缩放到 240×280 以内，转 JPEG（质量 75%），POST 上传 |
 | 图片解码 | TJpg_Decoder，缓冲区在 PSRAM（400 KB） |
+| **视频上传 + 循环播放** | 上传 `.mjpeg` 文件，存 PSRAM（4 MB 上限），循环播放 |
+| 播放控制 | `/vid/play`、`/vid/pause`、`/vid/stop` |
+
+## 视频播放
+
+### 工作流程
+
+```
+1. 电脑上用 ffmpeg 把视频转成 JPEG 帧序列
+2. tools/pack_mjpeg.py 打包成单个 .mjpeg 文件
+3. 浏览器上传到 ESP32
+4. ESP32 存进 PSRAM，循环播放
+```
+
+### 转帧（ffmpeg）
+
+```bash
+# 240 宽的 16:9 视频，10fps，JPEG 质量 5（约每帧 4-5 KB）
+ffmpeg -y -i input.mp4 -vf "fps=10,scale=240:-2" -q:v 5 frames/f_%03d.jpg
+```
+
+实测参考：6.2 秒的 720p 视频 → 62 帧 → 287 KB → 上传 6.4 秒。
+
+### 打包
+
+```powershell
+& $py tools\pack_mjpeg.py frames_out video.mjpeg
+```
+
+文件格式（`include/video.h` 里解析）：
+
+```
+offset  size  content
+0       4     magic "MJPG"
+4       2     frame count (uint16 LE)
+6       2     reserved
+8       ...   per frame: uint32 length (LE) + JPEG bytes
+```
+
+### 上传
+
+浏览器页面最上面的 Video 卡片，选 `.mjpeg` 文件点 **Upload & Play** 即可，
+上传完自动开始播放。
+
+命令行上传见 `upload_video.py`（Python 版，避开 PowerShell 的中文路径问题）。
+
+### 性能实测
+
+| 指标 | 实测值 |
+|---|---|
+| 分辨率 | 240×136（16:9）或 240×280（全屏） |
+| 帧率 | 10 fps 流畅 |
+| 单帧大小 | 约 4.7 KB |
+| 上传速度 | 约 46 KB/s（WiFi） |
+| PSRAM 上限 | 4 MB（可放约 800 帧 @ 4.7KB） |
 
 ### 图片上传的技术要点
 

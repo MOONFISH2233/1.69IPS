@@ -5,12 +5,21 @@
 # Generated font (750KB) - regenerate with tools/gen_font.py
 include/cn_font.h
 
-# Dev-only helper scripts, not part of the firmware
+# Generated video assets and frame dumps
+video.mjpeg
+frames_test/
+
+# Local helper scripts (dev-only)
 write_main.py
 patch_image.py
+ins.py
+fix_video.py
+add_video.py
+upload_video.py
 
 # OS / editor
 Thumbs.db
 desktop.ini
 *.swp
 *~
+*.bak
